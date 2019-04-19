@@ -76,6 +76,14 @@
 #define DEFAULT_AUTHMODE WIFI_AUTH_OPEN
 #endif /*CONFIG_FAST_SCAN_THRESHOLD*/
 
+static inline uint32_t sniffer_timestamp();
+void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type);
+void TCP_Client(void *pvParameter);
+static esp_err_t event_handler(void *ctx, system_event_t *event);
+static void wifi_scan(void);
+void app_main();
+void transform();
+
 typedef struct {
     uint8_t header[4];
     uint8_t dest_mac[6];
@@ -113,6 +121,7 @@ static inline uint32_t sniffer_timestamp()
 {
     return xTaskGetTickCount() * (1000 / configTICK_RATE_HZ);
 }
+
 /* The callback function of sniffer */
 void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
 {
@@ -164,6 +173,10 @@ void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
     s_device_info_num++;
     printf("\nCurrent device num = %d\n", s_device_info_num);
     printf("MAC: 0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X, The time is: %d, The rssi = %d\n", station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5], station_info->timestamp, station_info->rssi);
+	if(s_device_info_num == 10)
+	{
+		xTaskCreate(TCP_Client, "server", 2048, NULL, (tskIDLE_PRIORITY + 2), NULL);
+	}
 }
 
 void TCP_Client(void *pvParameter)
