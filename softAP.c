@@ -76,7 +76,6 @@
 #define DEFAULT_AUTHMODE WIFI_AUTH_OPEN
 #endif /*CONFIG_FAST_SCAN_THRESHOLD*/
 
-static inline uint32_t sniffer_timestamp();
 void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type);
 void TCP_Client(void *pvParameter);
 static esp_err_t event_handler(void *ctx, system_event_t *event);
@@ -114,13 +113,10 @@ int s_device_info_num           = 0;
 station_info_t *station_info    = NULL;
 station_info_t *g_station_list  = NULL;
 
+//char tcp_client_sendbuf[500]="";
+
+
 static EventGroupHandle_t s_wifi_event_group;
-
-
-static inline uint32_t sniffer_timestamp()
-{
-    return xTaskGetTickCount() * (1000 / configTICK_RATE_HZ);
-}
 
 /* The callback function of sniffer */
 void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
@@ -168,15 +164,12 @@ void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
 
     station_info->rssi = sniffer->rx_ctrl.rssi;
     station_info->channel = sniffer->rx_ctrl.channel;
-    station_info->timestamp = sniffer_timestamp();
+
     memcpy(station_info->bssid, sniffer_payload->source_mac, sizeof(station_info->bssid));
     s_device_info_num++;
     printf("\nCurrent device num = %d\n", s_device_info_num);
-    printf("MAC: 0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X, The time is: %d, The rssi = %d\n", station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5], station_info->timestamp, station_info->rssi);
-	if(s_device_info_num == 10)
-	{
-		xTaskCreate(TCP_Client, "server", 2048, NULL, (tskIDLE_PRIORITY + 2), NULL);
-	}
+    printf("MAC: 0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X, The rssi = %d\n", station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5], station_info->rssi);
+	
 }
 
 void TCP_Client(void *pvParameter)
@@ -187,63 +180,116 @@ void TCP_Client(void *pvParameter)
     static ip_addr_t server_ipaddr,loca_ipaddr;
     struct pbuf *q;
     struct netconn *tcp_clientconn;
-    char tcp_client_sendbuf[200]="OK123123hahahaha";
-    char tcp_client_recvbuf[200];
+    
+	//char send[200] = "test,by";
+	char *tcp_client_sendbuf;
+	//char tcp_client_recvbuf[20];
+    
     //xEventGroupWaitBits(s_wifi_event_group,CONNECTED_BIT,false,true,protMAX_DELAY);
     LWIP_UNUSED_ARG(pvParameter);
     server_port=12345;
     IP4_ADDR(&(server_ipaddr.u_addr.ip4),67,216,211,146);
-    while(1)
-    {
-        tcp_clientconn = netconn_new(NETCONN_TCP);
-        
-        err = netconn_connect(tcp_clientconn,&server_ipaddr,server_port);
-        
-        if( err!=ERR_OK )
-        {
-            netconn_delete(tcp_clientconn);
-        }    
-        else if(err == ERR_OK)
-        {
-            tcp_clientconn->recv_timeout=10;
-            netconn_getaddr(tcp_clientconn,&loca_ipaddr,&local_port,1);
-            printf("Connect server\r\n");
-            while(1)
-            {
-                struct netbuf *recvbuf;
-                err = netconn_write(tcp_clientconn,tcp_client_sendbuf,strlen((char *)tcp_client_sendbuf),NETCONN_COPY);
-                if(err!= ERR_OK)
-                {
-                    printf("Send error\r\n");
-                }
-                if((recv_err=netconn_recv(tcp_clientconn,&recvbuf))==ERR_OK)
-                {
-                    memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
-                    for(q=recvbuf->p;q!=NULL;q=q->next)
-                    {
-                        if(q->len>(TCP_Client_RX_BUFSIZE-date_len))memcpy(tcp_client_recvbuf+date_len,q->payload,(TCP_Client_RX_BUFSIZE-date_len));
-                        else memcpy(tcp_client_recvbuf+date_len,q->payload,q->len);
-                        date_len+=q->len;
-                        if(date_len > TCP_Client_RX_BUFSIZE)break;
-                        
-                    }
-                    date_len=0;
-                    printf("%s\r\n", tcp_client_recvbuf);
-                    netbuf_delete(recvbuf);
-                    
-                }
-                else if(recv_err==ERR_CLSD)
-                {
-                    netconn_close(tcp_clientconn);
-                    netconn_delete(tcp_clientconn);
-                    printf("Close server\r\n");
-                    break;
-                }
-                
-            }
-        }
-		vTaskDelay(1000/portTICK_PERIOD_MS);
-    }
+	
+	while(1)
+	{
+		tcp_clientconn = netconn_new(NETCONN_TCP);
+		err = netconn_connect(tcp_clientconn,&server_ipaddr,server_port);
+		if( err!=ERR_OK )
+		{
+			netconn_delete(tcp_clientconn);
+		}    
+		else if(err == ERR_OK)
+		{
+			tcp_clientconn->recv_timeout=10;
+			netconn_getaddr(tcp_clientconn,&loca_ipaddr,&local_port,1);
+			printf("Connect server\r\n");
+			if(s_device_info_num > 0)
+			{
+				
+				while(1)
+				{
+					//memcpy(tcp_client_sendbuf,"", 0);
+					
+					tcp_client_sendbuf = (char *) malloc(40*s_device_info_num);
+					//memset(tcp_client_sendbuf,'\0',sizeof(tcp_client_sendbuf));
+					strcpy(tcp_client_sendbuf,"")
+					for(station_info = g_station_list->next; station_info; station_info = station_info->next) 
+					{
+						sprintf(tcp_client_sendbuf,"%s0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X\n",
+						tcp_client_sendbuf,station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5]);
+					}
+					struct netbuf *recvbuf;
+					err = netconn_write(tcp_clientconn,tcp_client_sendbuf,strlen((char *)tcp_client_sendbuf),NETCONN_COPY);
+					//err = netconn_write(tcp_clientconn,send,strlen((char *)send),NETCONN_NOCOPY);
+					printf("write over,err = %d,tcp_client_sendbuf = %s,length = %d\n", err, tcp_client_sendbuf, strlen((char *)tcp_client_sendbuf));
+					if(err!= ERR_OK)
+					{
+						printf("Send error,err = %d\r\n",err);
+						free(tcp_client_sendbuf);
+					}
+					else
+					{
+						s_device_info_num=0;
+						printf("send over\n");
+						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
+							g_station_list->next = station_info->next;
+							free(station_info);
+						}
+						free(tcp_client_sendbuf);
+						netconn_close(tcp_clientconn);
+						netconn_delete(tcp_clientconn);
+						break;
+					}
+					
+					
+					
+					/**if((recv_err=netconn_recv(tcp_clientconn,&recvbuf))==ERR_OK)
+					{
+						printf("start to receive\n");
+						memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
+						printf("step1\n");
+						//for(q=recvbuf->p;q!=NULL;q=q->next)
+						//{
+						//	if(q->len>(TCP_Client_RX_BUFSIZE-date_len))memcpy(tcp_client_recvbuf+date_len,q->payload,(TCP_Client_RX_BUFSIZE-date_len));
+						//	else memcpy(tcp_client_recvbuf+date_len,q->payload,q->len);
+						//	date_len+=q->len;
+						//	if(date_len > TCP_Client_RX_BUFSIZE)break;
+						//}
+						q = recvbuf->p;
+						printf("step2\n");
+						memcpy(tcp_client_recvbuf,q->payload,q->len);
+						printf("step3\n");
+						date_len=0;
+						printf("%s\r\n", tcp_client_recvbuf);
+						if(strcmp(tcp_client_recvbuf,"OK")==0){
+							//strcpy(tcp_client_sendbuf,"");
+							s_device_info_num=0;
+							printf("send over\n");
+							for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
+								g_station_list->next = station_info->next;
+								free(station_info);
+							}
+						}	
+						netbuf_delete(recvbuf);
+						break;
+					}
+					
+					
+					else if(recv_err==ERR_CLSD)
+					{
+						netconn_close(tcp_clientconn);
+						netconn_delete(tcp_clientconn);
+						printf("Close server\r\n");
+						break;
+					}*/
+					//vTaskDelay(1000/portTICK_PERIOD_MS);
+				}
+			}
+			
+		}
+		vTaskDelay(10000/portTICK_PERIOD_MS);
+	}
+    
 }
 
 static const char *TAG = "scan";
@@ -259,15 +305,15 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
             ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
             ESP_LOGI(TAG, "Got IP: %s\n",
                      ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-                     
+            //xTaskHandlexHandle;         
             xTaskCreate(TCP_Client, "server", 2048, NULL, (tskIDLE_PRIORITY + 2), NULL);
 			//xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
-			//if (!g_station_list) {
-			//	g_station_list = malloc(sizeof(station_info_t));
-			//	g_station_list->next = NULL;
-			//	ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_sniffer_cb));
-			//	ESP_ERROR_CHECK(esp_wifi_set_promiscuous(1));
-			//}
+			if (!g_station_list) {
+				g_station_list = malloc(sizeof(station_info_t));
+				g_station_list->next = NULL;
+				ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_sniffer_cb));
+				ESP_ERROR_CHECK(esp_wifi_set_promiscuous(1));
+			}
                      
             break;
         case SYSTEM_EVENT_STA_DISCONNECTED:
