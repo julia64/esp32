@@ -210,9 +210,9 @@ void TCP_Client(void *pvParameter)
 				{
 					//memcpy(tcp_client_sendbuf,"", 0);
 					
-					tcp_client_sendbuf = (char *) malloc(40*s_device_info_num);
+					tcp_client_sendbuf = (char *) malloc(32*s_device_info_num);
 					//memset(tcp_client_sendbuf,'\0',sizeof(tcp_client_sendbuf));
-					strcpy(tcp_client_sendbuf,"")
+					strcpy(tcp_client_sendbuf,"");
 					for(station_info = g_station_list->next; station_info; station_info = station_info->next) 
 					{
 						sprintf(tcp_client_sendbuf,"%s0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X\n",
@@ -227,25 +227,9 @@ void TCP_Client(void *pvParameter)
 						printf("Send error,err = %d\r\n",err);
 						free(tcp_client_sendbuf);
 					}
-					else
+					if((recv_err=netconn_recv(tcp_clientconn,&recvbuf)))
 					{
-						s_device_info_num=0;
-						printf("send over\n");
-						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
-							g_station_list->next = station_info->next;
-							free(station_info);
-						}
-						free(tcp_client_sendbuf);
-						netconn_close(tcp_clientconn);
-						netconn_delete(tcp_clientconn);
-						break;
-					}
-					
-					
-					
-					/**if((recv_err=netconn_recv(tcp_clientconn,&recvbuf))==ERR_OK)
-					{
-						printf("start to receive\n");
+						/**printf("start to receive\n");
 						memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
 						printf("step1\n");
 						//for(q=recvbuf->p;q!=NULL;q=q->next)
@@ -271,6 +255,16 @@ void TCP_Client(void *pvParameter)
 							}
 						}	
 						netbuf_delete(recvbuf);
+						*/
+						s_device_info_num=0;
+						printf("send over,recv_err = %d\n",recv_err);
+						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
+							g_station_list->next = station_info->next;
+							free(station_info);
+						}
+						free(tcp_client_sendbuf);
+						netconn_close(tcp_clientconn);
+						netconn_delete(tcp_clientconn);
 						break;
 					}
 					
@@ -281,13 +275,13 @@ void TCP_Client(void *pvParameter)
 						netconn_delete(tcp_clientconn);
 						printf("Close server\r\n");
 						break;
-					}*/
+					}
 					//vTaskDelay(1000/portTICK_PERIOD_MS);
 				}
 			}
 			
 		}
-		vTaskDelay(10000/portTICK_PERIOD_MS);
+		vTaskDelay(30000/portTICK_PERIOD_MS);
 	}
     
 }
