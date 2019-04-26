@@ -188,7 +188,7 @@ void TCP_Client(void *pvParameter)
     //xEventGroupWaitBits(s_wifi_event_group,CONNECTED_BIT,false,true,protMAX_DELAY);
     LWIP_UNUSED_ARG(pvParameter);
     server_port=12345;
-    IP4_ADDR(&(server_ipaddr.u_addr.ip4),67,216,211,146);
+    IP4_ADDR(&(server_ipaddr.u_addr.ip4),123,206,201,67);
 	
 	while(1)
 	{
@@ -196,20 +196,21 @@ void TCP_Client(void *pvParameter)
 		err = netconn_connect(tcp_clientconn,&server_ipaddr,server_port);
 		if( err!=ERR_OK )
 		{
+			printf("Connect error");
 			netconn_delete(tcp_clientconn);
+			
 		}    
 		else if(err == ERR_OK)
 		{
 			tcp_clientconn->recv_timeout=10;
 			netconn_getaddr(tcp_clientconn,&loca_ipaddr,&local_port,1);
 			printf("Connect server\r\n");
-			if(s_device_info_num > 0)
+			while(1)
 			{
-				
-				while(1)
+				vTaskDelay(15000/portTICK_PERIOD_MS);
+				//memcpy(tcp_client_sendbuf,"", 0);
+				if(s_device_info_num > 0)
 				{
-					//memcpy(tcp_client_sendbuf,"", 0);
-					
 					tcp_client_sendbuf = (char *) malloc(32*s_device_info_num);
 					//memset(tcp_client_sendbuf,'\0',sizeof(tcp_client_sendbuf));
 					strcpy(tcp_client_sendbuf,"");
@@ -226,9 +227,10 @@ void TCP_Client(void *pvParameter)
 					{
 						printf("Send error,err = %d\r\n",err);
 						free(tcp_client_sendbuf);
+						break;
 					}
-					if((recv_err=netconn_recv(tcp_clientconn,&recvbuf)))
-					{
+					recv_err=netconn_recv(tcp_clientconn,&recvbuf);
+					
 						/**printf("start to receive\n");
 						memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
 						printf("step1\n");
@@ -256,32 +258,35 @@ void TCP_Client(void *pvParameter)
 						}	
 						netbuf_delete(recvbuf);
 						*/
-						s_device_info_num=0;
-						printf("send over,recv_err = %d\n",recv_err);
-						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
-							g_station_list->next = station_info->next;
-							free(station_info);
-						}
-						free(tcp_client_sendbuf);
-						netconn_close(tcp_clientconn);
-						netconn_delete(tcp_clientconn);
-						break;
-					}
-					
-					
-					else if(recv_err==ERR_CLSD)
+					if(recv_err==ERR_CLSD)
 					{
 						netconn_close(tcp_clientconn);
 						netconn_delete(tcp_clientconn);
 						printf("Close server\r\n");
 						break;
 					}
-					//vTaskDelay(1000/portTICK_PERIOD_MS);
-				}
+					else if(recv_err == 0 || recv_err == -3)
+					{
+						s_device_info_num=0;
+						printf("send over,recv_err = %d\n",recv_err);
+						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) 
+						{
+							g_station_list->next = station_info->next;
+							free(station_info);
+						}
+						free(tcp_client_sendbuf);
+						continue;
+					}
+					else
+					{
+						free(tcp_client_sendbuf);
+					}
+					
+				}	
+				
 			}
-			
 		}
-		vTaskDelay(30000/portTICK_PERIOD_MS);
+		//vTaskDelay(30000/portTICK_PERIOD_MS);
 	}
     
 }
