@@ -188,7 +188,7 @@ void TCP_Client(void *pvParameter)
     //xEventGroupWaitBits(s_wifi_event_group,CONNECTED_BIT,false,true,protMAX_DELAY);
     LWIP_UNUSED_ARG(pvParameter);
     server_port=12345;
-    IP4_ADDR(&(server_ipaddr.u_addr.ip4),123,206,201,67);
+    IP4_ADDR(&(server_ipaddr.u_addr.ip4),67,216,211,146);
 	
 	while(1)
 	{
@@ -211,13 +211,13 @@ void TCP_Client(void *pvParameter)
 				//memcpy(tcp_client_sendbuf,"", 0);
 				if(s_device_info_num > 0)
 				{
-					tcp_client_sendbuf = (char *) malloc(32*s_device_info_num);
+					tcp_client_sendbuf = (char *) malloc(50*s_device_info_num);
 					//memset(tcp_client_sendbuf,'\0',sizeof(tcp_client_sendbuf));
 					strcpy(tcp_client_sendbuf,"");
 					for(station_info = g_station_list->next; station_info; station_info = station_info->next) 
 					{
-						sprintf(tcp_client_sendbuf,"%s0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X\n",
-						tcp_client_sendbuf,station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5]);
+						sprintf(tcp_client_sendbuf,"%sMAC:0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X,rssi=%d\n",
+						tcp_client_sendbuf,station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5], station_info->rssi);
 					}
 					struct netbuf *recvbuf;
 					err = netconn_write(tcp_clientconn,tcp_client_sendbuf,strlen((char *)tcp_client_sendbuf),NETCONN_COPY);
@@ -337,8 +337,8 @@ static void wifi_scan(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
     wifi_config_t sta_config = {
         .sta = {
-            .ssid = "HUAWEI P20",
-            .password = "wjwjljlj",
+            .ssid = "Dian704",
+            .password = "diangroup704",
             .bssid_set = false
         },
     };
