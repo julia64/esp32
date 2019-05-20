@@ -219,54 +219,60 @@ void TCP_Client(void *pvParameter)
 						sprintf(tcp_client_sendbuf,"%sMAC:0x%02X.0x%02X.0x%02X.0x%02X.0x%02X.0x%02X,rssi=%d\n",
 						tcp_client_sendbuf,station_info->bssid[0], station_info->bssid[1], station_info->bssid[2], station_info->bssid[3], station_info->bssid[4], station_info->bssid[5], station_info->rssi);
 					}
-					struct netbuf *recvbuf;
-					err = netconn_write(tcp_clientconn,tcp_client_sendbuf,strlen((char *)tcp_client_sendbuf),NETCONN_COPY);
-					//err = netconn_write(tcp_clientconn,send,strlen((char *)send),NETCONN_NOCOPY);
-					printf("write over,err = %d,tcp_client_sendbuf = %s,length = %d\n", err, tcp_client_sendbuf, strlen((char *)tcp_client_sendbuf));
-					if(err!= ERR_OK)
-					{
-						printf("Send error,err = %d\r\n",err);
-						free(tcp_client_sendbuf);
-						break;
-					}
-					recv_err=netconn_recv(tcp_clientconn,&recvbuf);
 					
-						/**printf("start to receive\n");
-						memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
-						printf("step1\n");
-						//for(q=recvbuf->p;q!=NULL;q=q->next)
-						//{
-						//	if(q->len>(TCP_Client_RX_BUFSIZE-date_len))memcpy(tcp_client_recvbuf+date_len,q->payload,(TCP_Client_RX_BUFSIZE-date_len));
-						//	else memcpy(tcp_client_recvbuf+date_len,q->payload,q->len);
-						//	date_len+=q->len;
-						//	if(date_len > TCP_Client_RX_BUFSIZE)break;
-						//}
-						q = recvbuf->p;
-						printf("step2\n");
-						memcpy(tcp_client_recvbuf,q->payload,q->len);
-						printf("step3\n");
-						date_len=0;
-						printf("%s\r\n", tcp_client_recvbuf);
-						if(strcmp(tcp_client_recvbuf,"OK")==0){
-							//strcpy(tcp_client_sendbuf,"");
-							s_device_info_num=0;
-							printf("send over\n");
-							for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
-								g_station_list->next = station_info->next;
-								free(station_info);
-							}
-						}	
-						netbuf_delete(recvbuf);
-						*/
-					if(recv_err==ERR_CLSD)
-					{
-						netconn_close(tcp_clientconn);
-						netconn_delete(tcp_clientconn);
-						printf("Close server\r\n");
-						break;
-					}
-					else if(recv_err == 0 || recv_err == -3)
-					{
+				}else{
+					tcp_client_sendbuf = (char *) malloc(50);
+					strcpy(tcp_client_sendbuf,"MAC:0xFF.0xFF.0xFF.0xFF.0xFF.0xFF,rssi=0\n");
+				}
+				struct netbuf *recvbuf;
+				err = netconn_write(tcp_clientconn,tcp_client_sendbuf,strlen((char *)tcp_client_sendbuf),NETCONN_COPY);
+				//err = netconn_write(tcp_clientconn,send,strlen((char *)send),NETCONN_NOCOPY);
+				printf("write over,err = %d,tcp_client_sendbuf = %s,length = %d\n", err, tcp_client_sendbuf, strlen((char *)tcp_client_sendbuf));
+				if(err!= ERR_OK)
+				{
+					printf("Send error,err = %d\r\n",err);
+					free(tcp_client_sendbuf);
+					break;
+				}
+				recv_err=netconn_recv(tcp_clientconn,&recvbuf);
+				
+					/**printf("start to receive\n");
+					memset(tcp_client_recvbuf,0,TCP_Client_RX_BUFSIZE);
+					printf("step1\n");
+					//for(q=recvbuf->p;q!=NULL;q=q->next)
+					//{
+					//	if(q->len>(TCP_Client_RX_BUFSIZE-date_len))memcpy(tcp_client_recvbuf+date_len,q->payload,(TCP_Client_RX_BUFSIZE-date_len));
+					//	else memcpy(tcp_client_recvbuf+date_len,q->payload,q->len);
+					//	date_len+=q->len;
+					//	if(date_len > TCP_Client_RX_BUFSIZE)break;
+					//}
+					q = recvbuf->p;
+					printf("step2\n");
+					memcpy(tcp_client_recvbuf,q->payload,q->len);
+					printf("step3\n");
+					date_len=0;
+					printf("%s\r\n", tcp_client_recvbuf);
+					if(strcmp(tcp_client_recvbuf,"OK")==0){
+						//strcpy(tcp_client_sendbuf,"");
+						s_device_info_num=0;
+						printf("send over\n");
+						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) {
+							g_station_list->next = station_info->next;
+							free(station_info);
+						}
+					}	
+					netbuf_delete(recvbuf);
+					*/
+				if(recv_err==ERR_CLSD)
+				{
+					netconn_close(tcp_clientconn);
+					netconn_delete(tcp_clientconn);
+					printf("Close server\r\n");
+					break;
+				}
+				else if(recv_err == 0 || recv_err == -3)
+				{
+					if(s_device_info_num > 0){
 						s_device_info_num=0;
 						printf("send over,recv_err = %d\n",recv_err);
 						for (station_info = g_station_list->next; station_info; station_info = g_station_list->next) 
@@ -277,12 +283,15 @@ void TCP_Client(void *pvParameter)
 						free(tcp_client_sendbuf);
 						continue;
 					}
-					else
-					{
+					else{
 						free(tcp_client_sendbuf);
+						continue;
 					}
-					
-				}	
+				}
+				else
+				{
+					free(tcp_client_sendbuf);
+				}
 				
 			}
 		}
@@ -337,15 +346,15 @@ static void wifi_scan(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
     wifi_config_t sta_config = {
         .sta = {
-            .ssid = "Dian704",
-            .password = "diangroup704",
+            .ssid = "Dian",
+            .password = "diangroup",
             .bssid_set = false
         },
     };
 	wifi_config_t ap_config = {
         .ap = {
             .ssid = "esp32",
-            .password = "dinagroup",
+            .password = "diangroup",
             .ssid_len = 0,
             .max_connection = 4,
             .authmode = WIFI_AUTH_WPA_PSK
