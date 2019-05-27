@@ -199,7 +199,7 @@ void TCP_Client(void *pvParameter)
 			printf("Connect error");
 			netconn_delete(tcp_clientconn);
 			
-		}    
+		}
 		else if(err == ERR_OK)
 		{
 			tcp_clientconn->recv_timeout=10;
@@ -232,6 +232,8 @@ void TCP_Client(void *pvParameter)
 				{
 					printf("Send error,err = %d\r\n",err);
 					free(tcp_client_sendbuf);
+					netconn_close(tcp_clientconn);
+					netconn_delete(tcp_clientconn);
 					break;
 				}
 				recv_err=netconn_recv(tcp_clientconn,&recvbuf);
@@ -304,17 +306,19 @@ static const char *TAG = "scan";
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
+	TaskHandle_t xHandle = NULL;
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_START:
             ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
             ESP_ERROR_CHECK(esp_wifi_connect());
             break;
         case SYSTEM_EVENT_STA_GOT_IP:
+			
             ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
             ESP_LOGI(TAG, "Got IP: %s\n",
                      ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
-            //xTaskHandlexHandle;         
-            xTaskCreate(TCP_Client, "server", 2048, NULL, (tskIDLE_PRIORITY + 2), NULL);
+            //xTaskHandlexHandle;   		
+            xTaskCreate(TCP_Client, "server", 2048, NULL, (tskIDLE_PRIORITY + 2), &xHandle);
 			//xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
 			if (!g_station_list) {
 				g_station_list = malloc(sizeof(station_info_t));
@@ -326,6 +330,10 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
             break;
         case SYSTEM_EVENT_STA_DISCONNECTED:
             ESP_LOGI(TAG, "SYSTEM_EVENT_STA_DISCONNECTED");
+			if(xHandle != NULL)
+			{
+				vTaskDelete(xHandle);
+			}
             ESP_ERROR_CHECK(esp_wifi_connect());
             break;
         default:
